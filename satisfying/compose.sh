@@ -3,10 +3,11 @@
 # Reihenfolge von weich nach hart: Level 1 = Pudding, Level 2 = weich, Level 3 = hart.
 # Einblendungen nur "LEVEL 1-3" plus kurze Abschlusskarte (englisch).
 # Der KI-Hinweis steht nicht im Bild, sondern wird beim Hochladen per TikTok-Schalter gesetzt.
-# Aufruf: compose.sh <bilder-ordner> <ausgabe.mp4>
+# Aufruf: compose.sh <bilder-ordner> <ausgabe.mp4> [tonspur.wav]
 set -euo pipefail
 IN="$1"
 OUT="$2"
+AUDIO="${3:-}"
 TMP="$(mktemp -d)"
 FONT=/usr/share/fonts/opentype/inter/InterDisplay-Black.otf
 FONT2=/usr/share/fonts/opentype/inter/InterDisplay-Bold.otf
@@ -50,6 +51,11 @@ ffmpeg -v error -y -f lavfi -i "color=c=0x0B1433:s=1080x1920:r=30:d=$END" -vf "$
   -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p "$TMP/end.mp4"
 
 printf "file '%s'\nfile '%s'\n" "$TMP/main.mp4" "$TMP/end.mp4" > "$TMP/list.txt"
-ffmpeg -v error -y -f concat -safe 0 -i "$TMP/list.txt" -c copy -movflags +faststart "$OUT"
+if [ -n "$AUDIO" ]; then
+  ffmpeg -v error -y -f concat -safe 0 -i "$TMP/list.txt" -i "$AUDIO" \
+    -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart "$OUT"
+else
+  ffmpeg -v error -y -f concat -safe 0 -i "$TMP/list.txt" -c copy -movflags +faststart "$OUT"
+fi
 rm -rf "$TMP"
 echo "$OUT"
